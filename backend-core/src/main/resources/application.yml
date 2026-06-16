@@ -17,6 +17,8 @@ server:
   port: ${SERVER_PORT:8080}
 
 loadpace:
+  analytics:
+    base-url: ${LOADPACE_ANALYTICS_URL:http://localhost:8000}
   security:
     jwt:
       # 256-bit secret (base64). Override in production via LOADPACE_JWT_SECRET.

@@ -1,6 +1,8 @@
 package org.example.config;
 
+import org.example.analytics.AnalyticsClient;
 import org.example.auth.AuthService;
+import org.example.training.TrainingSessionService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -13,6 +15,21 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(TrainingSessionService.SessionNotFoundException.class)
+    public ProblemDetail handleSessionNotFound(TrainingSessionService.SessionNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(AnalyticsClient.AnalyticsUnavailableException.class)
+    public ProblemDetail handleAnalyticsUnavailable(AnalyticsClient.AnalyticsUnavailableException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
 
     @ExceptionHandler(AuthService.EmailAlreadyUsedException.class)
     public ProblemDetail handleEmailAlreadyUsed(AuthService.EmailAlreadyUsedException ex) {
