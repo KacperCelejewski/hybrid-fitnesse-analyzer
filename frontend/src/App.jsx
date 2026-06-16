@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import './App.css'
-// prototype – no backend calls, static mock data only
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import AuthPage from './pages/AuthPage'
+// Dashboard widgets below use static mock data; authentication is wired to the backend.
 
 const mockWorkouts = [
   { id: 1, date: '2026-05-19', type: 'run', title: 'Easy Run', duration: 45, distance: '8.2 km', load: 62, rpe: 5 },
@@ -29,12 +31,17 @@ const calendarData = {
   '27': { type: 'run', label: 'Long Run' },
 }
 
-function Nav({ active, setActive }) {
+function initials(user) {
+  const source = user?.displayName || user?.email || '?'
+  return source.trim().slice(0, 2).toUpperCase()
+}
+
+function Nav({ active, setActive, user, onLogout }) {
   return (
     <nav className="sidebar">
       <div className="brand">
         <span className="brand-icon">⚡</span>
-        <span className="brand-name">MultiLoad</span>
+        <span className="brand-name">LoadPace</span>
       </div>
       <ul className="nav-links">
         {[
@@ -56,11 +63,14 @@ function Nav({ active, setActive }) {
         ))}
       </ul>
       <div className="sidebar-footer">
-        <div className="user-avatar">KJ</div>
+        <div className="user-avatar">{initials(user)}</div>
         <div className="user-info">
-          <div className="user-name">Kacper J.</div>
-          <div className="user-plan">Pro Plan</div>
+          <div className="user-name">{user?.displayName || user?.email || 'Athlete'}</div>
+          <div className="user-plan">{user?.email}</div>
         </div>
+        <button type="button" className="logout-btn" onClick={onLogout} title="Sign out">
+          ⎋
+        </button>
       </div>
     </nav>
   )
@@ -386,17 +396,34 @@ function Analytics() {
   )
 }
 
-export default function App() {
+function AppShell() {
+  const { user, logout } = useAuth()
   const [page, setPage] = useState('dashboard')
 
   const pages = { dashboard: <Dashboard />, calendar: <Calendar />, log: <LogWorkout />, analytics: <Analytics /> }
 
   return (
     <div className="app-layout">
-      <Nav active={page} setActive={setPage} />
+      <Nav active={page} setActive={setPage} user={user} onLogout={logout} />
       <main className="main-content">
         {pages[page] || <Dashboard />}
       </main>
     </div>
+  )
+}
+
+function AuthGate() {
+  const { isAuthenticated, loading } = useAuth()
+  if (loading) {
+    return <div className="auth-loading">Loading…</div>
+  }
+  return isAuthenticated ? <AppShell /> : <AuthPage />
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   )
 }
