@@ -96,3 +96,6 @@ ENV/
 
 # logs
 *.log
+### Claude Code worktrees / local agent
+.claude/
+.claire/
