@@ -466,3 +466,31 @@ body {
 .sport-meta { font-size: 11px; color: #475569; }
 
 select option { background: #0f0f18; }
+
+/* Async states & form feedback */
+.empty-note {
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 12px 0;
+}
+.empty-note.error-note { color: #fca5a5; }
+
+.form-error {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.form-success {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #86efac;
+}

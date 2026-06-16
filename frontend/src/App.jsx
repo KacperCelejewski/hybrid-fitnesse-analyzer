@@ -1,16 +1,9 @@
 import { useState } from 'react'
 import './App.css'
 import { AuthProvider, useAuth } from './auth/AuthContext'
+import { SessionsProvider, useSessions } from './sessions/SessionsContext'
 import AuthPage from './pages/AuthPage'
 // Dashboard widgets below use static mock data; authentication is wired to the backend.
-
-const mockWorkouts = [
-  { id: 1, date: '2026-05-19', type: 'run', title: 'Easy Run', duration: 45, distance: '8.2 km', load: 62, rpe: 5 },
-  { id: 2, date: '2026-05-18', type: 'strength', title: 'Upper Body', duration: 60, sets: '4x8', load: 78, rpe: 7 },
-  { id: 3, date: '2026-05-17', type: 'run', title: 'Tempo Run', duration: 50, distance: '10.1 km', load: 95, rpe: 8 },
-  { id: 4, date: '2026-05-15', type: 'strength', title: 'Legs & Core', duration: 70, sets: '5x5', load: 112, rpe: 9 },
-  { id: 5, date: '2026-05-14', type: 'run', title: 'Long Run', duration: 90, distance: '18 km', load: 130, rpe: 6 },
-]
 
 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const calendarData = {
@@ -118,22 +111,41 @@ function FatigueGauge({ value }) {
   )
 }
 
+const SPORT_ICON = { RUN: '🏃', CYCLE: '🚴', STRENGTH: '🏋️' }
+const SPORT_LABEL = { RUN: 'Run', CYCLE: 'Cycle', STRENGTH: 'Strength' }
+
+function sportClass(type) {
+  return type === 'STRENGTH' ? 'strength' : 'run'
+}
+
+function withinLastDays(dateStr, days) {
+  const d = new Date(dateStr)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+  return d >= cutoff
+}
+
 function Dashboard() {
+  const { sessions, loading, error } = useSessions()
+
+  const weekly = sessions.filter((s) => withinLastDays(s.date, 7))
+  const weeklyLoad = Math.round(weekly.reduce((sum, s) => sum + (s.loadAu || 0), 0))
+  const recent = sessions.slice(0, 6)
+
   return (
     <div className="page">
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p className="page-sub">Tuesday, May 20 — Week 21</p>
+          <p className="page-sub">Your training load at a glance</p>
         </div>
-        <button className="btn-primary">+ Log Workout</button>
       </div>
 
       <div className="stats-grid">
-        <StatCard label="Weekly Load" value="477" unit="AU" sub="TRIMP + S-RPE" color="blue" trend={12} />
+        <StatCard label="Weekly Load" value={weeklyLoad} unit="AU" sub="TRIMP + S-RPE" color="blue" />
+        <StatCard label="Workouts This Week" value={weekly.length} unit="" sub="Last 7 days" color="purple" />
+        <StatCard label="Sessions Logged" value={sessions.length} unit="" sub="All time" color="teal" />
         <StatCard label="Recovery Score" value="68" unit="%" sub="Above baseline" color="green" trend={5} />
-        <StatCard label="Workouts This Week" value="3" unit="" sub="Goal: 5" color="purple" />
-        <StatCard label="Injury Risk" value="Low" unit="" sub="All metrics nominal" color="teal" />
       </div>
 
       <div className="content-row">
@@ -161,19 +173,28 @@ function Dashboard() {
 
       <div className="card recent-card">
         <h2 className="card-title">Recent Workouts</h2>
+        {loading && <div className="empty-note">Loading…</div>}
+        {error && <div className="empty-note error-note">{error}</div>}
+        {!loading && !error && recent.length === 0 && (
+          <div className="empty-note">No workouts logged yet. Use “Log Workout” to add your first session.</div>
+        )}
         <div className="workout-list">
-          {mockWorkouts.map(w => (
-            <div key={w.id} className="workout-row">
-              <div className={`workout-type-badge type-${w.type}`}>
-                {w.type === 'run' ? '🏃' : '🏋️'}
+          {recent.map((s) => (
+            <div key={s.id} className="workout-row">
+              <div className={`workout-type-badge type-${sportClass(s.type)}`}>
+                {SPORT_ICON[s.type] || '🏃'}
               </div>
               <div className="workout-info">
-                <div className="workout-title">{w.title}</div>
-                <div className="workout-meta">{w.date} · {w.duration} min {w.distance || w.sets || ''}</div>
+                <div className="workout-title">{SPORT_LABEL[s.type] || s.type}</div>
+                <div className="workout-meta">
+                  {s.date} · {s.durationMin} min
+                  {s.distanceKm ? ` · ${s.distanceKm} km` : ''}
+                  {s.sets ? ` · ${s.sets} sets` : ''}
+                </div>
               </div>
               <div className="workout-load">
-                <div className="load-badge">{w.load} AU</div>
-                <div className="rpe-badge">RPE {w.rpe}</div>
+                <div className="load-badge">{s.loadAu} AU</div>
+                <div className="rpe-badge">{s.loadMethod}</div>
               </div>
             </div>
           ))}
@@ -227,8 +248,68 @@ function Calendar() {
   )
 }
 
+const TYPE_OPTIONS = [
+  { ui: 'run', api: 'RUN', icon: '🏃', label: 'Running' },
+  { ui: 'strength', api: 'STRENGTH', icon: '🏋️', label: 'Strength' },
+  { ui: 'cycle', api: 'CYCLE', icon: '🚴', label: 'Cycling' },
+]
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function LogWorkout() {
+  const { addSession } = useSessions()
   const [type, setType] = useState('run')
+  const [date, setDate] = useState(todayIso())
+  const [duration, setDuration] = useState('')
+  const [distance, setDistance] = useState('')
+  const [avgHr, setAvgHr] = useState('')
+  const [sets, setSets] = useState('')
+  const [rpe, setRpe] = useState(6)
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const isEndurance = type === 'run' || type === 'cycle'
+
+  function resetFields() {
+    setDuration('')
+    setDistance('')
+    setAvgHr('')
+    setSets('')
+    setNotes('')
+    setRpe(6)
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setError(null)
+    setResult(null)
+    setSaving(true)
+    try {
+      const apiType = TYPE_OPTIONS.find((o) => o.ui === type)?.api
+      const payload = {
+        date,
+        type: apiType,
+        durationMin: Number(duration),
+        rpe: Number(rpe),
+        avgHr: isEndurance && avgHr ? Number(avgHr) : undefined,
+        distanceKm: isEndurance && distance ? Number(distance) : undefined,
+        sets: type === 'strength' && sets ? Number(sets) : undefined,
+        notes: notes.trim() || undefined,
+      }
+      const saved = await addSession(payload)
+      setResult(saved)
+      resetFields()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -238,60 +319,52 @@ function LogWorkout() {
         </div>
       </div>
 
-      <div className="card form-card">
+      <form className="card form-card" onSubmit={handleSubmit}>
         <div className="type-selector">
-          <button className={`type-btn ${type === 'run' ? 'selected' : ''}`} onClick={() => setType('run')}>
-            🏃 Running
-          </button>
-          <button className={`type-btn ${type === 'strength' ? 'selected' : ''}`} onClick={() => setType('strength')}>
-            🏋️ Strength
-          </button>
-          <button className={`type-btn ${type === 'cycle' ? 'selected' : ''}`} onClick={() => setType('cycle')}>
-            🚴 Cycling
-          </button>
+          {TYPE_OPTIONS.map((o) => (
+            <button
+              key={o.ui}
+              type="button"
+              className={`type-btn ${type === o.ui ? 'selected' : ''}`}
+              onClick={() => setType(o.ui)}
+            >
+              {o.icon} {o.label}
+            </button>
+          ))}
         </div>
 
         <div className="form-grid">
           <div className="form-group">
             <label>Date</label>
-            <input type="date" className="form-input" defaultValue="2026-05-20" />
+            <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div className="form-group">
             <label>Duration (min)</label>
-            <input type="number" className="form-input" placeholder="45" />
+            <input type="number" min="1" className="form-input" placeholder="45" value={duration} onChange={(e) => setDuration(e.target.value)} required />
           </div>
 
-          {type === 'run' && <>
+          {isEndurance && <>
             <div className="form-group">
               <label>Distance (km)</label>
-              <input type="number" className="form-input" placeholder="10.0" step="0.1" />
+              <input type="number" className="form-input" placeholder="10.0" step="0.1" value={distance} onChange={(e) => setDistance(e.target.value)} />
             </div>
             <div className="form-group">
               <label>Avg HR (bpm)</label>
-              <input type="number" className="form-input" placeholder="152" />
+              <input type="number" className="form-input" placeholder="152" value={avgHr} onChange={(e) => setAvgHr(e.target.value)} />
             </div>
           </>}
 
-          {type === 'strength' && <>
+          {type === 'strength' && (
             <div className="form-group">
               <label>Number of Sets</label>
-              <input type="number" className="form-input" placeholder="16" />
+              <input type="number" className="form-input" placeholder="16" value={sets} onChange={(e) => setSets(e.target.value)} />
             </div>
-            <div className="form-group">
-              <label>Session Type</label>
-              <select className="form-input">
-                <option>Upper Body</option>
-                <option>Lower Body</option>
-                <option>Full Body</option>
-                <option>Core</option>
-              </select>
-            </div>
-          </>}
+          )}
 
           <div className="form-group full-width">
-            <label>Perceived Exertion (RPE 1–10)</label>
+            <label>Perceived Exertion (RPE {rpe}/10)</label>
             <div className="rpe-slider-wrap">
-              <input type="range" min="1" max="10" defaultValue="6" className="rpe-slider" />
+              <input type="range" min="1" max="10" value={rpe} onChange={(e) => setRpe(Number(e.target.value))} className="rpe-slider" />
               <div className="rpe-labels">
                 {[1,2,3,4,5,6,7,8,9,10].map(n => <span key={n}>{n}</span>)}
               </div>
@@ -300,19 +373,27 @@ function LogWorkout() {
 
           <div className="form-group full-width">
             <label>Notes</label>
-            <textarea className="form-input form-textarea" placeholder="How did you feel? Any discomfort?" />
+            <textarea className="form-input form-textarea" placeholder="How did you feel? Any discomfort?" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
 
+        {error && <div className="form-error" role="alert">{error}</div>}
+        {result && (
+          <div className="form-success" role="status">
+            Saved — estimated load <strong>{result.loadAu} AU</strong> ({result.loadMethod} method).
+          </div>
+        )}
+
         <div className="form-footer">
           <div className="estimated-load">
-            <span>Estimated Load:</span>
-            <strong>~74 AU</strong>
-            <span className="load-method">(S-RPE method)</span>
+            <span>Load is estimated on save using</span>
+            <strong>{isEndurance ? 'TRIMP / S-RPE' : 'S-RPE'}</strong>
           </div>
-          <button className="btn-primary">Save Workout</button>
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? 'Saving…' : 'Save Workout'}
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   )
 }
@@ -403,12 +484,14 @@ function AppShell() {
   const pages = { dashboard: <Dashboard />, calendar: <Calendar />, log: <LogWorkout />, analytics: <Analytics /> }
 
   return (
-    <div className="app-layout">
-      <Nav active={page} setActive={setPage} user={user} onLogout={logout} />
-      <main className="main-content">
-        {pages[page] || <Dashboard />}
-      </main>
-    </div>
+    <SessionsProvider>
+      <div className="app-layout">
+        <Nav active={page} setActive={setPage} user={user} onLogout={logout} />
+        <main className="main-content">
+          {pages[page] || <Dashboard />}
+        </main>
+      </div>
+    </SessionsProvider>
   )
 }
 
