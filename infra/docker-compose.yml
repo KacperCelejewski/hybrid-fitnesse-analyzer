@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: loadpace-postgres
+    environment:
+      POSTGRES_DB: loadpace
+      POSTGRES_USER: loadpace
+      POSTGRES_PASSWORD: loadpace
+    ports:
+      - "5433:5432"
+    volumes:
+      - loadpace-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loadpace -d loadpace"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  loadpace-pgdata:
