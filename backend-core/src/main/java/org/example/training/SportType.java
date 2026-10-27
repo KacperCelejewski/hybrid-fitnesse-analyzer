@@ -1,8 +1,8 @@
 package org.example.training;
 
 /**
- * Discipline of a training session. Determines which load model is applied:
- * heart-rate based disciplines use TRIMP, strength uses session-RPE.
+ * Discipline of a training session. Every discipline is scored with session-RPE;
+ * heart-rate based disciplines additionally get an auxiliary TRIMP value.
  */
 public enum SportType {
     RUN,

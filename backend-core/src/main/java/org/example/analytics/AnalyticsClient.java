@@ -11,7 +11,8 @@ import org.springframework.web.client.RestClient;
 
 /**
  * Client for the analytics engine (Python/FastAPI), which owns the training-load
- * models (TRIMP and session-RPE). The backend delegates all load estimation here.
+ * models (session-RPE as the common load, TRIMP as an auxiliary value). The backend
+ * delegates all load estimation here.
  */
 @Component
 public class AnalyticsClient {
@@ -22,7 +23,7 @@ public class AnalyticsClient {
         this.restClient = RestClient.builder().baseUrl(baseUrl).build();
     }
 
-    public record LoadEstimate(double loadAu, String method) {
+    public record LoadEstimate(double loadAu, Double trimp) {
     }
 
     private record LoadRequest(
@@ -46,7 +47,10 @@ public class AnalyticsClient {
             if (response == null) {
                 throw new AnalyticsUnavailableException();
             }
-            return new LoadEstimate(response.get("loadAu").asDouble(), response.get("method").asText());
+            JsonNode trimp = response.get("trimp");
+            return new LoadEstimate(
+                    response.get("loadAu").asDouble(),
+                    trimp == null || trimp.isNull() ? null : trimp.asDouble());
         } catch (HttpClientErrorException.UnprocessableEntity ex) {
             // The engine could not estimate the load with the inputs provided.
             throw new IllegalArgumentException(extractDetail(ex));

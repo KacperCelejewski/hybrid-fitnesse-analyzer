@@ -44,8 +44,7 @@ public class TrainingSessionService {
         session.setSets(request.sets());
         session.setNotes(request.notes());
         session.setLoadAu(load.loadAu());
-        session.setLoadMethod(load.method());
-
+        session.setTrimp(load.trimp());
 
         return SessionResponse.from(sessionRepository.save(session));
     }

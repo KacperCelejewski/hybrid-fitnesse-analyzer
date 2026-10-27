@@ -13,7 +13,7 @@ public record CreateSessionRequest(
         @NotNull LocalDate date,
         @NotNull SportType type,
         @NotNull @Positive @Max(1440) Integer durationMin,
-        @Min(1) @Max(10) Integer rpe,
+        @NotNull @Min(1) @Max(10) Integer rpe,
         @Min(1) @Max(250) Integer avgHr,
         @Positive Double distanceKm,
         @Positive Integer sets,
