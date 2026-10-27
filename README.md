@@ -9,7 +9,7 @@ The **MultiLoad-Cloud-App** is a web-based platform designed for amateur athlete
 
 ### Key Features:
 - **Multisport Planning:** Integration of strength and endurance workouts in one calendar.
-- **Load Estimation:** Using **TRIMP** (for cardio) and **S-RPE** (for strength) models.
+- **Load Estimation:** **S-RPE** is the common load scale for every session; **TRIMP** is computed additionally for sessions with heart-rate data.
 - **Cloud-Native Architecture:** Scalable microservices deployed in a cloud environment.
 - **Recovery Prediction:** Real-time feedback on body fatigue and injury risk.
 
