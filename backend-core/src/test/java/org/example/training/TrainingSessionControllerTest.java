@@ -37,7 +37,7 @@ class TrainingSessionControllerTest {
     @BeforeEach
     void stubAnalytics() {
         when(analyticsClient.estimate(any(), any(), any(), any(), any(User.class)))
-                .thenReturn(new AnalyticsClient.LoadEstimate(420.0, "S-RPE"));
+                .thenReturn(new AnalyticsClient.LoadEstimate(420.0, null));
     }
 
     private String registerAndGetToken(String email) throws Exception {
@@ -65,9 +65,52 @@ class TrainingSessionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(session))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.loadMethod").value("S-RPE"))
                 .andExpect(jsonPath("$.loadAu").value(420.0))
+                .andExpect(jsonPath("$.trimp").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.id").isNumber());
+    }
+
+    @Test
+    void runWithHeartRatePersistsTrimp() throws Exception {
+        when(analyticsClient.estimate(any(), any(), any(), any(), any(User.class)))
+                .thenReturn(new AnalyticsClient.LoadEstimate(300.0, 100.4));
+
+        String token = registerAndGetToken("runner@loadpace.dev");
+        mockMvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"date":"2026-06-10","type":"RUN","durationMin":60,"rpe":5,"avgHr":150}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.loadAu").value(300.0))
+                .andExpect(jsonPath("$.trimp").value(100.4));
+    }
+
+    @Test
+    void missingRpeIsBadRequest() throws Exception {
+        String token = registerAndGetToken("norpe@loadpace.dev");
+        mockMvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"date":"2026-06-10","type":"RUN","durationMin":40,"avgHr":150}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rpeOutOfRangeIsBadRequest() throws Exception {
+        String token = registerAndGetToken("badrpe@loadpace.dev");
+        for (int rpe : new int[] {0, 11}) {
+            mockMvc.perform(post("/api/sessions")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"date":"2026-06-10","type":"RUN","durationMin":40,"rpe":%d}
+                                    """.formatted(rpe)))
+                    .andExpect(status().isBadRequest());
+        }
     }
 
     @Test
@@ -137,7 +180,7 @@ class TrainingSessionControllerTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"date":"2026-06-10","type":"RUN","durationMin":40}
+                                {"date":"2026-06-10","type":"RUN","durationMin":40,"rpe":5}
                                 """))
                 .andExpect(status().isBadRequest());
     }

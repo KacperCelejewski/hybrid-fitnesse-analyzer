@@ -43,7 +43,7 @@ public class TrainingSession {
     private Integer durationMin;
 
     /** Session rating of perceived exertion on the CR-10 scale (1-10). */
-    @Column(name = "rpe")
+    @Column(name = "rpe", nullable = false)
     private Integer rpe;
 
     /** Average heart rate in bpm (endurance sessions). */
@@ -59,12 +59,13 @@ public class TrainingSession {
     @Column(name = "notes", length = 1000)
     private String notes;
 
-    /** Estimated training load in arbitrary units. */
+    /** Session-RPE training load in arbitrary units (RPE x duration). */
     @Column(name = "load_au", nullable = false)
     private Double loadAu;
 
-    @Column(name = "load_method", nullable = false, length = 20)
-    private String loadMethod;
+    /** Auxiliary TRIMP value, present only when heart-rate data and a profile allow it. */
+    @Column(name = "trimp")
+    private Double trimp;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -162,12 +163,12 @@ public class TrainingSession {
         this.loadAu = loadAu;
     }
 
-    public String getLoadMethod() {
-        return loadMethod;
+    public Double getTrimp() {
+        return trimp;
     }
 
-    public void setLoadMethod(String loadMethod) {
-        this.loadMethod = loadMethod;
+    public void setTrimp(Double trimp) {
+        this.trimp = trimp;
     }
 
     public Instant getCreatedAt() {

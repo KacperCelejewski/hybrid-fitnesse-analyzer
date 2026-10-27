@@ -142,7 +142,7 @@ function Dashboard() {
       </div>
 
       <div className="stats-grid">
-        <StatCard label="Weekly Load" value={weeklyLoad} unit="AU" sub="TRIMP + S-RPE" color="blue" />
+        <StatCard label="Weekly Load" value={weeklyLoad} unit="AU" sub="S-RPE" color="blue" />
         <StatCard label="Workouts This Week" value={weekly.length} unit="" sub="Last 7 days" color="purple" />
         <StatCard label="Sessions Logged" value={sessions.length} unit="" sub="All time" color="teal" />
         <StatCard label="Recovery Score" value="68" unit="%" sub="Above baseline" color="green" trend={5} />
@@ -194,7 +194,7 @@ function Dashboard() {
               </div>
               <div className="workout-load">
                 <div className="load-badge">{s.loadAu} AU</div>
-                <div className="rpe-badge">{s.loadMethod}</div>
+                {s.trimp != null && <div className="rpe-badge">TRIMP {s.trimp}</div>}
               </div>
             </div>
           ))}
@@ -362,7 +362,7 @@ function LogWorkout() {
           )}
 
           <div className="form-group full-width">
-            <label>Perceived Exertion (RPE {rpe}/10)</label>
+            <label>Perceived Exertion (RPE {rpe}/10) *</label>
             <div className="rpe-slider-wrap">
               <input type="range" min="1" max="10" value={rpe} onChange={(e) => setRpe(Number(e.target.value))} className="rpe-slider" />
               <div className="rpe-labels">
@@ -380,14 +380,16 @@ function LogWorkout() {
         {error && <div className="form-error" role="alert">{error}</div>}
         {result && (
           <div className="form-success" role="status">
-            Saved — estimated load <strong>{result.loadAu} AU</strong> ({result.loadMethod} method).
+            Saved — load <strong>{result.loadAu} AU</strong> (S-RPE)
+            {result.trimp != null && ` · TRIMP ${result.trimp}`}.
           </div>
         )}
 
         <div className="form-footer">
           <div className="estimated-load">
             <span>Load is estimated on save using</span>
-            <strong>{isEndurance ? 'TRIMP / S-RPE' : 'S-RPE'}</strong>
+            <strong>S-RPE</strong>
+            {isEndurance && <span> · TRIMP shown when heart rate is provided</span>}
           </div>
           <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save Workout'}
@@ -459,7 +461,7 @@ function Analytics() {
             <div className="sport-bar-track">
               <div className="sport-bar-fill run-fill" style={{ width: '62%' }} />
             </div>
-            <div className="sport-meta">TRIMP model · Avg HR 154 bpm</div>
+            <div className="sport-meta">Avg HR 154 bpm</div>
           </div>
           <div className="sport-item">
             <div className="sport-header">
@@ -469,7 +471,7 @@ function Analytics() {
             <div className="sport-bar-track">
               <div className="sport-bar-fill strength-fill" style={{ width: '38%' }} />
             </div>
-            <div className="sport-meta">S-RPE model · Avg sets: 18</div>
+            <div className="sport-meta">Avg sets: 18</div>
           </div>
         </div>
       </div>

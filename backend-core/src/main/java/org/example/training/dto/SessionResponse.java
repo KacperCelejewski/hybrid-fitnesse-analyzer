@@ -16,7 +16,7 @@ public record SessionResponse(
         Integer sets,
         String notes,
         Double loadAu,
-        String loadMethod
+        Double trimp
 ) {
     public static SessionResponse from(TrainingSession s) {
         return new SessionResponse(
@@ -30,6 +30,6 @@ public record SessionResponse(
                 s.getSets(),
                 s.getNotes(),
                 s.getLoadAu(),
-                s.getLoadMethod());
+                s.getTrimp());
     }
 }
