@@ -18,8 +18,8 @@ jobs:
           java-version: '24'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Build with Maven
-        run: mvn -f backend-core/pom.xml clean package -DskipTests
+      - name: Build and test with Maven
+        run: mvn -f backend-core/pom.xml clean package
 
   # 2. Testing Backend (Python)
   build-analytics:
@@ -35,6 +35,10 @@ jobs:
           cd analytics-engine
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd analytics-engine
+          python -m pytest -q
 
   # 3. Testing Frontend (React)
   build-frontend:
